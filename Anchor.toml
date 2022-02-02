@@ -1,0 +1,12 @@
+[programs.localnet]
+mlh_counter = "7nUsE6D9TwY3dDrASLTkyRiEgqeiW9qx8CwsJqNYC7eu"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "devnet"
+wallet = "/Users/loser/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
