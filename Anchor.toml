@@ -1,6 +1,12 @@
 [programs.localnet]
 mlh_counter = "7nUsE6D9TwY3dDrASLTkyRiEgqeiW9qx8CwsJqNYC7eu"
 
+[programs.devnet]
+mlh_counter = "7nUsE6D9TwY3dDrASLTkyRiEgqeiW9qx8CwsJqNYC7eu"
+
+[programs.mainnet]
+mlh_counter = "7nUsE6D9TwY3dDrASLTkyRiEgqeiW9qx8CwsJqNYC7eu"
+
 [registry]
 url = "https://anchor.projectserum.com"
 

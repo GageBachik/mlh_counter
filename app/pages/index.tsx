@@ -1,82 +1,121 @@
 import Head from 'next/head'
 
+import {
+  WalletDisconnectButton,
+  WalletMultiButton,
+} from '@solana/wallet-adapter-react-ui'
+import * as anchor from '@project-serum/anchor'
+import { Program, Provider, BN } from '@project-serum/anchor'
+import counterIDL from '../../target/idl/mlh_counter.json'
+import { PublicKey, ConfirmOptions } from '@solana/web3.js'
+import { useAnchorWallet } from '@solana/wallet-adapter-react'
+
+import { useState, useEffect } from 'react'
+
+type counterState = {
+  program: any
+  connection: any
+  counter: any
+}
+
 export default function Home() {
+  const wallet = useAnchorWallet()
+  const [appState, setAppState] = useState({} as counterState)
+
+  const getState = async () => {
+    const mlhIdl = counterIDL as anchor.Idl
+
+    const opts = {
+      preflightCommitment: 'processed' as ConfirmOptions,
+    }
+    const endpoint = 'https://api.devnet.solana.com'
+    const connection = new anchor.web3.Connection(
+      endpoint,
+      opts.preflightCommitment
+    )
+    const aWallet = wallet as typeof anchor.Wallet
+    const provider = new Provider(connection, aWallet, opts.preflightCommitment)
+    const mlhCounter = new anchor.web3.PublicKey(
+      '7nUsE6D9TwY3dDrASLTkyRiEgqeiW9qx8CwsJqNYC7eu'
+    )
+
+    const program = new Program(mlhIdl, mlhCounter, provider)
+
+    // const [counter, _counterBump] =
+    //   await anchor.web3.PublicKey.findProgramAddress(
+    //     [wallet!.publicKey.toBuffer()],
+    //     program.programId
+    //   )
+
+    const counter = await program.account.counter.all([
+      {
+        memcmp: {
+          offset: 8, // Discriminator.
+          bytes: wallet!.publicKey.toBase58(),
+        },
+      },
+    ])
+
+    console.log('counter: ', counter[0].publicKey.toString())
+
+    setAppState({
+      program,
+      connection,
+      counter: counter[0],
+    })
+  }
+
+  const initCounter = async () => {
+    const [counter, counterBump] =
+      await anchor.web3.PublicKey.findProgramAddress(
+        [wallet!.publicKey.toBuffer()],
+        appState.program.programId
+      )
+
+    await appState.program.rpc.initialize(counterBump, {
+      accounts: {
+        authority: appState.program.provider.wallet.publicKey,
+        counter: counter,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+    })
+  }
+  const updateCounter = async () => {
+    await appState.program.rpc.update({
+      accounts: {
+        authority: appState.program.provider.wallet.publicKey,
+        counter: appState.counter.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+    })
+  }
+
+  useEffect(() => {
+    if (wallet?.publicKey) {
+      getState()
+    }
+  }, [wallet])
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-2">
-      <Head>
-        <title>Create Next App</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <main className="flex w-full flex-1 flex-col items-center justify-center px-20 text-center">
-        <h1 className="text-6xl font-bold">
-          Welcome to{' '}
-          <a className="text-blue-600" href="https://nextjs.org">
-            Next.js!
-          </a>
-        </h1>
-
-        <p className="mt-3 text-2xl">
-          Get started by editing{' '}
-          <code className="rounded-md bg-gray-100 p-3 font-mono text-lg">
-            pages/index.tsx
-          </code>
-        </p>
-
-        <div className="mt-6 flex max-w-4xl flex-wrap items-center justify-around sm:w-full">
-          <a
-            href="https://nextjs.org/docs"
-            className="mt-6 w-96 rounded-xl border p-6 text-left hover:text-blue-600 focus:text-blue-600"
-          >
-            <h3 className="text-2xl font-bold">Documentation &rarr;</h3>
-            <p className="mt-4 text-xl">
-              Find in-depth information about Next.js features and API.
-            </p>
-          </a>
-
-          <a
-            href="https://nextjs.org/learn"
-            className="mt-6 w-96 rounded-xl border p-6 text-left hover:text-blue-600 focus:text-blue-600"
-          >
-            <h3 className="text-2xl font-bold">Learn &rarr;</h3>
-            <p className="mt-4 text-xl">
-              Learn about Next.js in an interactive course with quizzes!
-            </p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-            className="mt-6 w-96 rounded-xl border p-6 text-left hover:text-blue-600 focus:text-blue-600"
-          >
-            <h3 className="text-2xl font-bold">Examples &rarr;</h3>
-            <p className="mt-4 text-xl">
-              Discover and deploy boilerplate example Next.js projects.
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/import?filter=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className="mt-6 w-96 rounded-xl border p-6 text-left hover:text-blue-600 focus:text-blue-600"
-          >
-            <h3 className="text-2xl font-bold">Deploy &rarr;</h3>
-            <p className="mt-4 text-xl">
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
+    <div className="flex content-center items-center p-16">
+      <div className="bg-base-300 mockup-window m-16">
+        <div>
+          <WalletMultiButton />
         </div>
-      </main>
-
-      <footer className="flex h-24 w-full items-center justify-center border-t">
-        <a
-          className="flex items-center justify-center"
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className="ml-2 h-4" />
-        </a>
-      </footer>
+        {!appState.counter ? (
+          <button className="btn" onClick={initCounter}>
+            Init Counter
+          </button>
+        ) : (
+          <div>
+            <p>Count: {appState.counter.account.count.toString()}</p>
+            <button className="btn" onClick={updateCounter}>
+              Update Counter
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
